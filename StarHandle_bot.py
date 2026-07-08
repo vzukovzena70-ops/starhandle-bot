@@ -185,7 +185,8 @@ def get_user(user_id):
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "total_attempts": 0,
             "max_rarity_found": 0,
-            "notify_list": []
+            "notify_list": [],
+            "agreement_accepted": False
         }
         save_db(db)
     return db["users"][uid]
@@ -311,7 +312,8 @@ def get_subscription_keyboard(not_subscribed):
 def require_subscription(func):
     @wraps(func)
     async def wrapper(callback, *args, **kwargs):
-        is_subscribed, not_subscribed = await check_channel_subscription(callback.from_user.id)
+        user_id = callback.from_user.id
+        is_subscribed, not_subscribed = await check_channel_subscription(user_id)
         if not is_subscribed:
             try:
                 await callback.message.delete()
@@ -337,21 +339,37 @@ async def check_username_telegram(username):
     try:
         chat = await bot.get_chat(f"@{username}")
         if chat:
+            print(f"Занят: @{username}")
             return False
     except TelegramBadRequest as e:
         error = str(e).lower()
         if "not found" in error:
+            print(f"Свободен: @{username}")
             return True
         if "chat not found" in error:
+            print(f"Свободен: @{username}")
             return True
         if "user not found" in error:
+            print(f"Свободен: @{username}")
             return True
         if "bot was blocked" in error:
+            print(f"Свободен: @{username}")
             return True
-        return True
-    except:
-        return True
+        print(f"Ошибка при проверке @{username}: {e}")
+        return False
+    except Exception as e:
+        print(f"Ошибка при проверке @{username}: {e}")
+        return False
     return False
+
+async def check_username_telegram_alt(username):
+    try:
+        await bot.get_chat_member(f"@{username}", 1)
+        print(f"Alt проверка: @{username} ЗАНЯТ")
+        return False
+    except:
+        print(f"Alt проверка: @{username} СВОБОДЕН")
+        return True
 
 class GeneratorStates(StatesGroup):
     choosing_category = State()
@@ -367,6 +385,13 @@ class PremiumStates(StatesGroup):
     waiting_mask = State()
     waiting_rarity = State()
     waiting_nick_for_notify = State()
+
+def agreement_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Принимаю условия", callback_data="accept_agreement")],
+        [InlineKeyboardButton(text="Пользовательское соглашение", callback_data="show_agreement")],
+        [InlineKeyboardButton(text="Политика конфиденциальности", callback_data="show_privacy")],
+    ])
 
 def main_menu_keyboard():
     keyboard = [
@@ -500,6 +525,7 @@ def generated_nicks_keyboard(nicks=None):
 
 def my_nicks_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Проверить ники", callback_data="check_nicks")],
         [InlineKeyboardButton(text="Очистить все", callback_data="clear_nicks")],
         [InlineKeyboardButton(text="Назад", callback_data="main_menu")]
     ])
@@ -512,17 +538,34 @@ async def cmd_start(message, state):
     try:
         await state.clear()
         user_id = message.from_user.id
-        is_subscribed, not_subscribed = await check_channel_subscription(user_id)
-        if not is_subscribed:
-            await message.answer(
-                "Добро пожаловать! Подпишитесь на каналы:",
-                reply_markup=get_subscription_keyboard(not_subscribed)
-            )
-            return
         user = get_user(user_id)
+        
         if user.get("banned"):
             await message.answer("Вы забанены.")
             return
+            
+        if not user.get("agreement_accepted"):
+            await message.answer(
+                "Добро пожаловать в StarHandle!\n\n"
+                "Перед использованием бота необходимо ознакомиться и принять условия:\n\n"
+                "1. Вы соглашаетесь с правилами использования бота\n"
+                "2. Вы несёте ответственность за использование найденных ников\n"
+                "3. Бот не гарантирует 100% точность проверки занятости ников\n"
+                "4. Все платежи осуществляются через Telegram Stars\n"
+                "5. Возврат средств не предусмотрен\n\n"
+                "Для продолжения примите условия:",
+                reply_markup=agreement_keyboard()
+            )
+            return
+            
+        is_subscribed, not_subscribed = await check_channel_subscription(user_id)
+        if not is_subscribed:
+            await message.answer(
+                "Для доступа к боту подпишитесь на каналы:",
+                reply_markup=get_subscription_keyboard(not_subscribed)
+            )
+            return
+        
         args = message.text.split()
         if len(args) > 1:
             ref_code = args[1]
@@ -539,6 +582,7 @@ async def cmd_start(message, state):
                         update_user(user_id, user)
                         await message.answer("Реферальный код активирован! +3 запроса")
                     break
+        
         user = get_user(user_id)
         user["username"] = message.from_user.username or ""
         user["first_name"] = message.from_user.first_name or ""
@@ -558,14 +602,73 @@ async def cmd_start(message, state):
         print(f"Start error: {e}")
         await message.answer("Произошла ошибка.")
 
+@dp.callback_query(lambda c: c.data == "show_agreement")
+async def show_agreement(callback):
+    await callback.message.edit_text(
+        "ПОЛЬЗОВАТЕЛЬСКОЕ СОГЛАШЕНИЕ\n\n"
+        "1. Бот StarHandle предоставляет услуги по поиску свободных юзернеймов в Telegram.\n\n"
+        "2. Бот не гарантирует 100% точность проверки занятости ников.\n\n"
+        "3. Ответственность за использование найденных ников несёт пользователь.\n\n"
+        "4. Все платежи осуществляются через Telegram Stars, возврат средств не предусмотрен.\n\n"
+        "5. Бот оставляет за собой право изменять условия использования без предварительного уведомления.\n\n"
+        "6. Запрещается использовать бота для незаконных целей.\n\n"
+        "7. Администрация не несёт ответственности за убытки, возникшие в результате использования бота.\n\n"
+        "8. Используя бота, вы соглашаетесь с настоящими условиями.\n\n"
+        "Для продолжения примите условия:",
+        reply_markup=agreement_keyboard()
+    )
+    await callback.answer()
+
+@dp.callback_query(lambda c: c.data == "show_privacy")
+async def show_privacy(callback):
+    await callback.message.edit_text(
+        "ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ\n\n"
+        "1. Бот собирает следующую информацию:\n"
+        "   - ID пользователя Telegram\n"
+        "   - Имя и юзернейм\n"
+        "   - История поиска и сохранённые ники\n"
+        "   - Данные о подписках и платежах\n\n"
+        "2. Собранная информация используется для:\n"
+        "   - Предоставления услуг бота\n"
+        "   - Улучшения работы бота\n"
+        "   - Статистики и аналитики\n\n"
+        "3. Данные не передаются третьим лицам.\n\n"
+        "4. Вы можете удалить свои данные, обратившись в поддержку.\n\n"
+        "5. Используя бота, вы соглашаетесь с условиями сбора данных.\n\n"
+        "Для продолжения примите условия:",
+        reply_markup=agreement_keyboard()
+    )
+    await callback.answer()
+
+@dp.callback_query(lambda c: c.data == "accept_agreement")
+async def accept_agreement(callback):
+    user = get_user(callback.from_user.id)
+    user["agreement_accepted"] = True
+    update_user(callback.from_user.id, user)
+    await callback.message.delete()
+    await callback.message.answer(
+        "Добро пожаловать!\n\n"
+        "Для доступа к боту подпишитесь на каналы:",
+        reply_markup=get_subscription_keyboard([])
+    )
+    await callback.answer()
+
 @dp.callback_query(lambda c: c.data == "check_subscription")
 async def check_subscription_handler(callback):
     user_id = callback.from_user.id
     is_subscribed, not_subscribed = await check_channel_subscription(user_id)
     if is_subscribed:
         await callback.message.delete()
+        user = get_user(user_id)
         await callback.message.answer(
-            "Подписка подтверждена!",
+            f"StarHandle — поиск свободных ников\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Пользователь: {user['first_name']}\n"
+            f"Подписка: {user['subscription'].upper()}\n"
+            f"Запросов: {user['requests_today']}/{user['requests_limit']}\n"
+            f"Баланс: {user['stars']} звёзд\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Выберите действие:",
             reply_markup=main_menu_keyboard()
         )
         await callback.answer()
@@ -960,7 +1063,7 @@ async def choose_type(callback, state):
         )
         found_nicks = []
         checked = 0
-        max_attempts = count * 5
+        max_attempts = count * 8
         while len(found_nicks) < count and checked < max_attempts:
             checked += 1
             if category and category in NICK_CATEGORIES:
@@ -978,6 +1081,8 @@ async def choose_type(callback, state):
                 remaining = length - len(nick)
                 nick += ''.join(random.choices(string.ascii_lowercase + string.digits, k=remaining))
             is_free = await check_username_telegram(nick)
+            if is_free:
+                is_free = await check_username_telegram_alt(nick)
             if is_free:
                 rarity = calculate_rarity(nick)
                 if category and category in NICK_CATEGORIES:
@@ -1104,6 +1209,49 @@ async def save_nicks(callback, state):
         print(f"Save nicks error: {e}")
         await callback.answer("Ошибка")
 
+@dp.callback_query(lambda c: c.data == "check_nicks")
+@require_subscription
+async def check_saved_nicks(callback):
+    try:
+        user = get_user(callback.from_user.id)
+        saved = user.get("saved_nicks", [])
+        if not saved:
+            await callback.message.edit_text(
+                "У тебя пока нет сохранённых ников",
+                reply_markup=my_nicks_keyboard()
+            )
+            await callback.answer()
+            return
+        free = []
+        taken = []
+        for nick in saved:
+            is_free = await check_username_telegram(nick)
+            if is_free:
+                is_free = await check_username_telegram_alt(nick)
+            if is_free:
+                free.append(nick)
+            else:
+                taken.append(nick)
+        if taken:
+            user["saved_nicks"] = free
+            update_user(callback.from_user.id, user)
+            await callback.message.edit_text(
+                f"Проверка завершена!\n\n"
+                f"Удалено занятых ников: {len(taken)}\n"
+                f"Осталось свободных: {len(free)}\n\n"
+                f"Занятые ники:\n" + "\n".join([f"@{n}" for n in taken[:10]]),
+                reply_markup=my_nicks_keyboard()
+            )
+        else:
+            await callback.message.edit_text(
+                f"Все {len(free)} ников свободны!",
+                reply_markup=my_nicks_keyboard()
+            )
+        await callback.answer()
+    except Exception as e:
+        print(f"Check nicks error: {e}")
+        await callback.answer("Ошибка")
+
 @dp.callback_query(lambda c: c.data == "my_nicks")
 @require_subscription
 async def my_nicks(callback):
@@ -1113,7 +1261,7 @@ async def my_nicks(callback):
         if not saved_nicks:
             await callback.message.edit_text(
                 "У тебя пока нет сохранённых ников",
-                reply_markup=bottom_actions_keyboard()
+                reply_markup=my_nicks_keyboard()
             )
             await callback.answer()
             return
@@ -1828,7 +1976,7 @@ async def web_app_handler(message: Message):
                 return
             found_nicks = []
             checked = 0
-            max_attempts = count * 5
+            max_attempts = count * 8
             while len(found_nicks) < count and checked < max_attempts:
                 checked += 1
                 if gen_type == "digits":
@@ -1838,6 +1986,8 @@ async def web_app_handler(message: Message):
                 else:
                     nick = ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
                 is_free = await check_username_telegram(nick)
+                if is_free:
+                    is_free = await check_username_telegram_alt(nick)
                 if is_free:
                     rarity = calculate_rarity(nick)
                     value_info = get_nick_value(category)
