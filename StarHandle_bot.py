@@ -563,7 +563,7 @@ async def start_captcha(message, user_id):
     user = get_user(user_id)
     if user["captcha_attempts"] >= 3:
         await message.answer(
-            "Вы превысили лимит попыток проверки на робота.\n"
+            "❌ Вы превысили лимит попыток проверки на робота.\n"
             "Попробуйте позже или обратитесь в поддержку."
         )
         return
@@ -578,7 +578,7 @@ async def start_captcha(message, user_id):
     update_user(user_id, user)
     
     await message.answer(
-        f"Проверка на робота\n\n"
+        f"🤖 Проверка на робота\n\n"
         f"Найди эмодзи: {target_emoji}\n\n"
         f"Выбери из 9 вариантов:\n"
         f"У тебя осталось {3 - user['captcha_attempts']} попыток",
@@ -593,17 +593,19 @@ async def captcha_handler(callback):
     if user.get("captcha_passed"):
         await callback.answer("Вы уже прошли проверку!")
         await callback.message.delete()
-        user = get_user(user_id)
         await callback.message.answer(
-            f"StarHandle — поиск свободных ников\n"
-            f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"Пользователь: {user['first_name']}\n"
-            f"Подписка: {user['subscription'].upper()}\n"
-            f"Запросов: {user['requests_today']}/{user['requests_limit']}\n"
-            f"Баланс: {user['stars']} звёзд\n"
-            f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"Выберите действие:",
-            reply_markup=main_menu_keyboard()
+            "Добро пожаловать в StarHandle!\n\n"
+            "Перед использованием бота необходимо ознакомиться и принять условия:\n\n"
+            "📋 КРАТКИЕ УСЛОВИЯ ИСПОЛЬЗОВАНИЯ\n\n"
+            "✅ Вы соглашаетесь с правилами использования бота\n"
+            "✅ Вы несёте ответственность за использование найденных ников\n"
+            "✅ Бот НЕ гарантирует 100% точность проверки\n"
+            "✅ Все платежи через Telegram Stars — ВОЗВРАТ НЕВОЗМОЖЕН\n"
+            "✅ Ваши данные хранятся безопасно и не передаются третьим лицам\n"
+            "✅ Бот предназначен для пользователей старше 13 лет\n\n"
+            "Подробнее в полных документах ниже.\n\n"
+            "Для продолжения примите условия:",
+            reply_markup=agreement_keyboard()
         )
         return
     
@@ -616,10 +618,20 @@ async def captcha_handler(callback):
         update_user(user_id, user)
         await callback.message.delete()
         await callback.message.answer(
-            "✅ Проверка пройдена! Добро пожаловать в StarHandle!",
-            reply_markup=main_menu_keyboard()
+            "✅ Проверка пройдена! Добро пожаловать в StarHandle!\n\n"
+            "Перед использованием бота необходимо ознакомиться и принять условия:\n\n"
+            "📋 КРАТКИЕ УСЛОВИЯ ИСПОЛЬЗОВАНИЯ\n\n"
+            "✅ Вы соглашаетесь с правилами использования бота\n"
+            "✅ Вы несёте ответственность за использование найденных ников\n"
+            "✅ Бот НЕ гарантирует 100% точность проверки\n"
+            "✅ Все платежи через Telegram Stars — ВОЗВРАТ НЕВОЗМОЖЕН\n"
+            "✅ Ваши данные хранятся безопасно и не передаются третьим лицам\n"
+            "✅ Бот предназначен для пользователей старше 13 лет\n\n"
+            "Подробнее в полных документах ниже.\n\n"
+            "Для продолжения примите условия:",
+            reply_markup=agreement_keyboard()
         )
-        await callback.answer("Добро пожаловать!")
+        await callback.answer("✅ Проверка пройдена!")
     else:
         attempts += 1
         user["captcha_attempts"] = attempts
@@ -642,12 +654,12 @@ async def captcha_handler(callback):
         
         await callback.message.edit_text(
             f"❌ Неверно! Попробуйте снова.\n\n"
-            f"Проверка на робота\n\n"
+            f"🤖 Проверка на робота\n\n"
             f"Найди эмодзи: {target}\n\n"
             f"У тебя осталось {3 - attempts} попыток",
             reply_markup=captcha_keyboard(new_emojis, target)
         )
-        await callback.answer("Неверный выбор!")
+        await callback.answer("❌ Неверный выбор!")
 
 @dp.message(Command("start"))
 async def cmd_start(message, state):
@@ -657,27 +669,30 @@ async def cmd_start(message, state):
         user = get_user(user_id)
         
         if user.get("banned"):
-            await message.answer("Вы забанены.")
+            await message.answer("🚫 Вы забанены.")
+            return
+        
+        if not user.get("captcha_passed"):
+            await start_captcha(message, user_id)
             return
         
         if not user.get("agreement_accepted"):
             await message.answer(
                 "Добро пожаловать в StarHandle!\n\n"
                 "Перед использованием бота необходимо ознакомиться и принять условия:\n\n"
-                "1. Вы соглашаетесь с правилами использования бота\n"
-                "2. Вы несёте ответственность за использование найденных ников\n"
-                "3. Бот не гарантирует 100% точность проверки занятости ников\n"
-                "4. Все платежи осуществляются через Telegram Stars\n"
-                "5. Возврат средств не предусмотрен\n\n"
+                "📋 КРАТКИЕ УСЛОВИЯ ИСПОЛЬЗОВАНИЯ\n\n"
+                "✅ Вы соглашаетесь с правилами использования бота\n"
+                "✅ Вы несёте ответственность за использование найденных ников\n"
+                "✅ Бот НЕ гарантирует 100% точность проверки\n"
+                "✅ Все платежи через Telegram Stars — ВОЗВРАТ НЕВОЗМОЖЕН\n"
+                "✅ Ваши данные хранятся безопасно и не передаются третьим лицам\n"
+                "✅ Бот предназначен для пользователей старше 13 лет\n\n"
+                "Подробнее в полных документах ниже.\n\n"
                 "Для продолжения примите условия:",
                 reply_markup=agreement_keyboard()
             )
             return
             
-        if not user.get("captcha_passed"):
-            await start_captcha(message, user_id)
-            return
-        
         is_subscribed, not_subscribed = await check_channel_subscription(user_id)
         if not is_subscribed:
             await message.answer(
@@ -725,7 +740,7 @@ async def cmd_start(message, state):
 @dp.callback_query(lambda c: c.data == "show_agreement")
 async def show_agreement(callback):
     await callback.message.edit_text(
-        "ПОЛЬЗОВАТЕЛЬСКОЕ СОГЛАШЕНИЕ (от 08.07.2026)\n\n"
+        "📋 ПОЛЬЗОВАТЕЛЬСКОЕ СОГЛАШЕНИЕ (от 08.07.2026)\n\n"
         "1. Бот StarHandle предоставляет услуги по поиску свободных юзернеймов в Telegram.\n\n"
         "2. Бот не гарантирует 100% точность проверки занятости ников.\n\n"
         "3. Ответственность за использование найденных ников несёт пользователь.\n\n"
@@ -735,6 +750,8 @@ async def show_agreement(callback):
         "7. Администрация не несёт ответственности за убытки, возникшие в результате использования бота.\n\n"
         "8. Используя бота, вы соглашаетесь с настоящими условиями.\n\n"
         "9. Бот предназначен для пользователей старше 13 лет.\n\n"
+        "10. Администрация вправе заблокировать пользователя при нарушении условий.\n\n"
+        "11. Споры решаются путём переговоров.\n\n"
         "Для продолжения примите условия:",
         reply_markup=agreement_keyboard()
     )
@@ -743,7 +760,7 @@ async def show_agreement(callback):
 @dp.callback_query(lambda c: c.data == "show_privacy")
 async def show_privacy(callback):
     await callback.message.edit_text(
-        "ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ (от 08.07.2026)\n\n"
+        "🔒 ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ (от 08.07.2026)\n\n"
         "1. Бот собирает следующую информацию:\n"
         "   - ID пользователя Telegram\n"
         "   - Имя и юзернейм\n"
@@ -755,7 +772,10 @@ async def show_privacy(callback):
         "   - Статистики и аналитики\n\n"
         "3. Данные не передаются третьим лицам.\n\n"
         "4. Вы можете удалить свои данные, обратившись в поддержку.\n\n"
-        "5. Используя бота, вы соглашаетесь с условиями сбора данных.\n\n"
+        "5. Данные хранятся до момента удаления аккаунта пользователем.\n\n"
+        "6. Используя бота, вы соглашаетесь с условиями сбора данных.\n\n"
+        "7. Все данные передаются по защищённому протоколу HTTPS.\n\n"
+        "8. Администрация не имеет доступа к платежным данным пользователей.\n\n"
         "Для продолжения примите условия:",
         reply_markup=agreement_keyboard()
     )
@@ -768,13 +788,24 @@ async def accept_agreement(callback):
     update_user(callback.from_user.id, user)
     await callback.message.delete()
     
-    if not user.get("captcha_passed"):
-        await start_captcha(callback.message, callback.from_user.id)
-    else:
+    is_subscribed, not_subscribed = await check_channel_subscription(callback.from_user.id)
+    if not is_subscribed:
         await callback.message.answer(
-            "Добро пожаловать!\n\n"
             "Для доступа к боту подпишитесь на каналы:",
-            reply_markup=get_subscription_keyboard([])
+            reply_markup=get_subscription_keyboard(not_subscribed)
+        )
+    else:
+        user = get_user(callback.from_user.id)
+        await callback.message.answer(
+            f"StarHandle — поиск свободных ников\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Пользователь: {user['first_name']}\n"
+            f"Подписка: {user['subscription'].upper()}\n"
+            f"Запросов: {user['requests_today']}/{user['requests_limit']}\n"
+            f"Баланс: {user['stars']} звёзд\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Выберите действие:",
+            reply_markup=main_menu_keyboard()
         )
     await callback.answer()
 
