@@ -46,7 +46,7 @@ SUPPORT_CONTACTS = ["@Zawkhaing794", "@CEPNAYA_KISLOTA"]
 
 NICK_CATEGORIES = {
     "gamer": {
-        "name": "🎮 Геймерский",
+        "name": "Геймерский",
         "emoji": "🎮",
         "description": "Крутые ники для игр",
         "value": "common",
@@ -56,7 +56,7 @@ NICK_CATEGORIES = {
         "words": ["pro", "god", "king", "legend", "star", "wolf", "fox", "shadow", "night", "death", "fire", "ice", "storm", "rage", "bane", "slash", "hunter", "killer", "ghost", "venom", "sniper", "assassin", "warrior", "dragon"]
     },
     "anime": {
-        "name": "🌸 Аниме",
+        "name": "Аниме",
         "emoji": "🌸",
         "description": "Ники в стиле аниме",
         "value": "uncommon",
@@ -66,7 +66,7 @@ NICK_CATEGORIES = {
         "words": ["anime", "manga", "kawaii", "baka", "sugoi", "neko", "inu", "tora", "ryu", "kami", "yami", "hikari", "tsuyoi", "hayai", "ookii", "senpai", "kohai", "otaku", "weeb", "moe"]
     },
     "cyber": {
-        "name": "💻 Киберпанк",
+        "name": "Киберпанк",
         "emoji": "💻",
         "description": "Футуристические ники",
         "value": "rare",
@@ -76,7 +76,7 @@ NICK_CATEGORIES = {
         "words": ["hack", "code", "zero", "one", "night", "city", "ghost", "shadow", "black", "white", "silver", "gold", "ice", "fire", "void", "matrix", "neon", "cyber", "pulse", "grid", "sync"]
     },
     "space": {
-        "name": "🌌 Космический",
+        "name": "Космический",
         "emoji": "🌌",
         "description": "Звёздные и космические",
         "value": "rare",
@@ -86,7 +86,7 @@ NICK_CATEGORIES = {
         "words": ["star", "moon", "sun", "planet", "galaxy", "cosmos", "void", "light", "shadow", "dark", "bright", "shine", "glow", "spark", "nova", "comet", "orbit", "nebula", "quasar"]
     },
     "premium": {
-        "name": "💎 Премиум",
+        "name": "Премиум",
         "emoji": "💎",
         "description": "Элитные, дорогие ники",
         "value": "epic",
@@ -96,7 +96,7 @@ NICK_CATEGORIES = {
         "words": ["king", "queen", "lord", "lady", "prince", "princess", "emperor", "legend", "myth", "god", "angel", "devil", "immortal", "eternal", "divine", "phoenix", "dragon", "titan", "olympus", "valhalla"]
     },
     "nature": {
-        "name": "🌿 Природа",
+        "name": "Природа",
         "emoji": "🌿",
         "description": "Природные и спокойные",
         "value": "common",
@@ -106,7 +106,7 @@ NICK_CATEGORIES = {
         "words": ["wolf", "fox", "bear", "eagle", "hawk", "lion", "tiger", "panther", "dragon", "phoenix", "thunder", "storm", "blaze", "shadow", "light", "river", "mountain", "forest", "ocean", "flower"]
     },
     "funny": {
-        "name": "😂 Смешной",
+        "name": "Смешной",
         "emoji": "😂",
         "description": "Забавные и мемные ники",
         "value": "common",
@@ -116,7 +116,7 @@ NICK_CATEGORIES = {
         "words": ["chill", "lazy", "cute", "funny", "haha", "lol", "xd", "cool", "epic", "fail", "win", "boss", "chad", "giga", "omega", "pog", "bruh", "sus", "simp", "based", "cringe", "sigma", "alpha", "beta"]
     },
     "crypto": {
-        "name": "₿ Крипто",
+        "name": "Крипто",
         "emoji": "₿",
         "description": "Для криптоэнтузиастов",
         "value": "epic",
@@ -327,15 +327,31 @@ def require_subscription(func):
     return wrapper
 
 async def check_username_telegram(username):
+    username = username.lower().strip()
+    if len(username) < 5 or len(username) > 32:
+        return False
+    if not username[0].isalpha():
+        return False
+    if not all(c.isalnum() or c == '_' for c in username):
+        return False
     try:
         chat = await bot.get_chat(f"@{username}")
-        return False
+        if chat:
+            return False
     except TelegramBadRequest as e:
-        if "not found" in str(e).lower():
+        error = str(e).lower()
+        if "not found" in error:
+            return True
+        if "chat not found" in error:
+            return True
+        if "user not found" in error:
+            return True
+        if "bot was blocked" in error:
             return True
         return True
     except:
         return True
+    return False
 
 class GeneratorStates(StatesGroup):
     choosing_category = State()
@@ -353,31 +369,39 @@ class PremiumStates(StatesGroup):
     waiting_nick_for_notify = State()
 
 def main_menu_keyboard():
+    keyboard = [
+        [InlineKeyboardButton(text="Поиск ников", callback_data="generator")],
+        [InlineKeyboardButton(text="Профиль", callback_data="profile")],
+        [InlineKeyboardButton(text="Подписки", callback_data="subscriptions")],
+        [InlineKeyboardButton(text="Донат", callback_data="donate")],
+        [InlineKeyboardButton(text="Рефералы", callback_data="referrals")],
+        [InlineKeyboardButton(text="Поддержка", callback_data="support")],
+        [InlineKeyboardButton(text="Мои ники", callback_data="my_nicks")],
+        [InlineKeyboardButton(text="Топ ников", callback_data="top_nicks")],
+        [InlineKeyboardButton(text="Премиум-функции", callback_data="premium_features")],
+        [InlineKeyboardButton(text="Помощь", callback_data="help")],
+        [InlineKeyboardButton(text="Открыть приложение", web_app=types.WebAppInfo(url="https://starhandle.infinityfreeapp.com"))],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+def bottom_actions_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎲 Поиск ников", callback_data="generator")],
-        [InlineKeyboardButton(text="👤 Профиль", callback_data="profile")],
-        [InlineKeyboardButton(text="💎 Подписки", callback_data="subscriptions")],
-        [InlineKeyboardButton(text="⭐ Донат", callback_data="donate")],
-        [InlineKeyboardButton(text="👥 Рефералы", callback_data="referrals")],
-        [InlineKeyboardButton(text="📞 Поддержка", callback_data="support")],
-        [InlineKeyboardButton(text="📂 Мои ники", callback_data="my_nicks")],
-        [InlineKeyboardButton(text="🏆 Топ ников", callback_data="top_nicks")],
-        [InlineKeyboardButton(text="❓ Помощь", callback_data="help")],
-        [InlineKeyboardButton(text="✨ Премиум-функции", callback_data="premium_features")],
-        [InlineKeyboardButton(text="🚀 Открыть приложение", web_app=types.WebAppInfo(url="https://starhandle.infinityfreeapp.com"))],
+        [InlineKeyboardButton(text="Помощь", callback_data="help"), InlineKeyboardButton(text="Поддержка", callback_data="support")],
+        [InlineKeyboardButton(text="Мои ники", callback_data="my_nicks"), InlineKeyboardButton(text="Топ ников", callback_data="top_nicks")],
+        [InlineKeyboardButton(text="Главное меню", callback_data="main_menu")],
     ])
 
 def back_to_main_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")]
+        [InlineKeyboardButton(text="Назад", callback_data="main_menu")]
     ])
 
 def premium_features_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎯 Поиск по маске", callback_data="premium_mask")],
-        [InlineKeyboardButton(text="📊 Поиск по рейтингу", callback_data="premium_rarity")],
-        [InlineKeyboardButton(text="🔔 Ловушка для ника", callback_data="premium_notify")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")],
+        [InlineKeyboardButton(text="Поиск по маске", callback_data="premium_mask")],
+        [InlineKeyboardButton(text="Поиск по рейтингу", callback_data="premium_rarity")],
+        [InlineKeyboardButton(text="Ловушка для ника", callback_data="premium_notify")],
+        [InlineKeyboardButton(text="Назад", callback_data="main_menu")],
     ])
 
 def generator_category_keyboard():
@@ -392,40 +416,40 @@ def generator_category_keyboard():
             row = []
     if row:
         buttons.append(row)
-    buttons.append([InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")])
+    buttons.append([InlineKeyboardButton(text="Назад", callback_data="main_menu")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def generator_count_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="1", callback_data="gen_count_1"), InlineKeyboardButton(text="5", callback_data="gen_count_5")],
         [InlineKeyboardButton(text="8", callback_data="gen_count_8"), InlineKeyboardButton(text="10", callback_data="gen_count_10")],
-        [InlineKeyboardButton(text="🔙 Назад к категориям", callback_data="gen_back_category")],
+        [InlineKeyboardButton(text="Назад к категориям", callback_data="gen_back_category")],
     ])
 
 def generator_length_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="5 букв", callback_data="gen_len_5"), InlineKeyboardButton(text="6 букв", callback_data="gen_len_6")],
-        [InlineKeyboardButton(text="🔙 Назад к количеству", callback_data="gen_back_count")],
+        [InlineKeyboardButton(text="Назад к количеству", callback_data="gen_back_count")],
     ])
 
 def generator_type_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔢 Только цифры", callback_data="gen_type_digits")],
-        [InlineKeyboardButton(text="🔡 Буквы + цифры", callback_data="gen_type_mixed")],
-        [InlineKeyboardButton(text="🔤 Только буквы", callback_data="gen_type_letters")],
-        [InlineKeyboardButton(text="🔙 Назад к длине", callback_data="gen_back_length")],
+        [InlineKeyboardButton(text="Только цифры", callback_data="gen_type_digits")],
+        [InlineKeyboardButton(text="Буквы + цифры", callback_data="gen_type_mixed")],
+        [InlineKeyboardButton(text="Только буквы", callback_data="gen_type_letters")],
+        [InlineKeyboardButton(text="Назад к длине", callback_data="gen_back_length")],
     ])
 
 def subscriptions_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⭐ PRO — 1 месяц (15⭐)", callback_data="buy_pro_month")],
-        [InlineKeyboardButton(text="⭐ PRO — 3 месяца (25⭐)", callback_data="buy_pro_3month")],
-        [InlineKeyboardButton(text="⭐ PRO — 1 год (75⭐)", callback_data="buy_pro_year")],
-        [InlineKeyboardButton(text="👑 MASTER — 1 месяц (50⭐)", callback_data="buy_master_month")],
-        [InlineKeyboardButton(text="👑 MASTER — 3 месяца (75⭐)", callback_data="buy_master_3month")],
-        [InlineKeyboardButton(text="👑 MASTER — 1 год (130⭐)", callback_data="buy_master_year")],
-        [InlineKeyboardButton(text="👑 MASTER — НАВСЕГДА (350⭐)", callback_data="buy_master_forever")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")],
+        [InlineKeyboardButton(text="PRO — 1 месяц (15⭐)", callback_data="buy_pro_month")],
+        [InlineKeyboardButton(text="PRO — 3 месяца (25⭐)", callback_data="buy_pro_3month")],
+        [InlineKeyboardButton(text="PRO — 1 год (75⭐)", callback_data="buy_pro_year")],
+        [InlineKeyboardButton(text="MASTER — 1 месяц (50⭐)", callback_data="buy_master_month")],
+        [InlineKeyboardButton(text="MASTER — 3 месяца (75⭐)", callback_data="buy_master_3month")],
+        [InlineKeyboardButton(text="MASTER — 1 год (130⭐)", callback_data="buy_master_year")],
+        [InlineKeyboardButton(text="MASTER — НАВСЕГДА (350⭐)", callback_data="buy_master_forever")],
+        [InlineKeyboardButton(text="Назад", callback_data="main_menu")],
     ])
 
 def donate_keyboard():
@@ -438,46 +462,46 @@ def donate_keyboard():
             row = []
     if row:
         buttons.append(row)
-    buttons.append([InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")])
+    buttons.append([InlineKeyboardButton(text="Назад", callback_data="main_menu")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def referral_keyboard(user_id):
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📋 Скопировать ссылку", callback_data=f"copy_ref_{user_id}")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")],
+        [InlineKeyboardButton(text="Скопировать ссылку", callback_data=f"copy_ref_{user_id}")],
+        [InlineKeyboardButton(text="Назад", callback_data="main_menu")],
     ])
 
 def support_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📩 Написать @Zawkhaing794", url="https://t.me/Zawkhaing794")],
-        [InlineKeyboardButton(text="📩 Написать @CEPNAYA_KISLOTA", url="https://t.me/CEPNAYA_KISLOTA")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")],
+        [InlineKeyboardButton(text="Написать @Zawkhaing794", url="https://t.me/Zawkhaing794")],
+        [InlineKeyboardButton(text="Написать @CEPNAYA_KISLOTA", url="https://t.me/CEPNAYA_KISLOTA")],
+        [InlineKeyboardButton(text="Назад", callback_data="main_menu")],
     ])
 
 def admin_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📢 Рассылка", callback_data="admin_broadcast")],
-        [InlineKeyboardButton(text="🎁 Выдать подписку", callback_data="admin_sub")],
-        [InlineKeyboardButton(text="🚫 Бан/Разбан", callback_data="admin_ban")],
-        [InlineKeyboardButton(text="📊 Выдать запросы", callback_data="admin_requests")],
-        [InlineKeyboardButton(text="⭐ Выдать звёзды", callback_data="admin_stars")],
-        [InlineKeyboardButton(text="🟢 Выдать запросы ОНЛАЙН", callback_data="admin_online_requests")],
-        [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
-        [InlineKeyboardButton(text="👥 Статистика пользователей", callback_data="user_stats")],
-        [InlineKeyboardButton(text="🔙 Выйти из админки", callback_data="main_menu")],
+        [InlineKeyboardButton(text="Рассылка", callback_data="admin_broadcast")],
+        [InlineKeyboardButton(text="Выдать подписку", callback_data="admin_sub")],
+        [InlineKeyboardButton(text="Бан/Разбан", callback_data="admin_ban")],
+        [InlineKeyboardButton(text="Выдать запросы", callback_data="admin_requests")],
+        [InlineKeyboardButton(text="Выдать звёзды", callback_data="admin_stars")],
+        [InlineKeyboardButton(text="Выдать запросы ОНЛАЙН", callback_data="admin_online_requests")],
+        [InlineKeyboardButton(text="Статистика", callback_data="admin_stats")],
+        [InlineKeyboardButton(text="Статистика пользователей", callback_data="user_stats")],
+        [InlineKeyboardButton(text="Выйти из админки", callback_data="main_menu")],
     ])
 
 def generated_nicks_keyboard(nicks=None):
-    buttons = [[InlineKeyboardButton(text="🔄 Сгенерировать ещё", callback_data="generator")]]
+    buttons = [[InlineKeyboardButton(text="Сгенерировать ещё", callback_data="generator")]]
     if nicks and len(nicks) > 0:
-        buttons.append([InlineKeyboardButton(text="💾 Сохранить все ники", callback_data="save_nicks")])
-    buttons.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")])
+        buttons.append([InlineKeyboardButton(text="Сохранить все ники", callback_data="save_nicks")])
+    buttons.append([InlineKeyboardButton(text="Главное меню", callback_data="main_menu")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def my_nicks_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🗑 Очистить все", callback_data="clear_nicks")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")]
+        [InlineKeyboardButton(text="Очистить все", callback_data="clear_nicks")],
+        [InlineKeyboardButton(text="Назад", callback_data="main_menu")]
     ])
 
 bot = Bot(token=TOKEN)
@@ -520,14 +544,14 @@ async def cmd_start(message, state):
         user["first_name"] = message.from_user.first_name or ""
         update_user(user_id, user)
         await message.answer(
-            f"🌟 StarHandle — поиск свободных ников\n"
+            f"StarHandle — поиск свободных ников\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"👤 Пользователь: {user['first_name']}\n"
-            f"📦 Подписка: {user['subscription'].upper()}\n"
-            f"📊 Запросов: {user['requests_today']}/{user['requests_limit']}\n"
-            f"⭐ Баланс: {user['stars']} звёзд\n"
+            f"Пользователь: {user['first_name']}\n"
+            f"Подписка: {user['subscription'].upper()}\n"
+            f"Запросов: {user['requests_today']}/{user['requests_limit']}\n"
+            f"Баланс: {user['stars']} звёзд\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"👇 Выберите действие:",
+            f"Выберите действие:",
             reply_markup=main_menu_keyboard()
         )
     except Exception as e:
@@ -541,13 +565,13 @@ async def check_subscription_handler(callback):
     if is_subscribed:
         await callback.message.delete()
         await callback.message.answer(
-            "✅ Подписка подтверждена!",
+            "Подписка подтверждена!",
             reply_markup=main_menu_keyboard()
         )
         await callback.answer()
     else:
         await callback.message.edit_text(
-            "❌ Вы подписались не на все каналы:",
+            "Вы подписались не на все каналы:",
             reply_markup=get_subscription_keyboard(not_subscribed)
         )
         await callback.answer()
@@ -564,14 +588,14 @@ async def main_menu(callback, state):
             await callback.answer()
             return
         await callback.message.edit_text(
-            f"🌟 StarHandle — поиск свободных ников\n"
+            f"StarHandle — поиск свободных ников\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"👤 Пользователь: {user['first_name']}\n"
-            f"📦 Подписка: {user['subscription'].upper()}\n"
-            f"📊 Запросов: {user['requests_today']}/{user['requests_limit']}\n"
-            f"⭐ Баланс: {user['stars']} звёзд\n"
+            f"Пользователь: {user['first_name']}\n"
+            f"Подписка: {user['subscription'].upper()}\n"
+            f"Запросов: {user['requests_today']}/{user['requests_limit']}\n"
+            f"Баланс: {user['stars']} звёзд\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"👇 Выберите действие:",
+            f"Выберите действие:",
             reply_markup=main_menu_keyboard()
         )
         await callback.answer()
@@ -584,20 +608,20 @@ async def main_menu(callback, state):
 async def show_help(callback):
     try:
         await callback.message.edit_text(
-            "❓ Помощь по боту\n\n"
+            "Помощь по боту\n\n"
             "1. Нажми «Поиск ников»\n"
             "2. Выбери категорию\n"
             "3. Выбери количество, длину и тип\n"
             "4. Получи список свободных ников!\n\n"
-            "💎 Подписки:\n"
-            "• FREE — 10 запросов/день\n"
-            "• PRO — 30 запросов/день\n"
-            "• MASTER — 150 запросов/день\n\n"
-            "✨ Премиум-функции (доступны с PRO):\n"
-            "• Поиск по маске (a?b?c → любые буквы)\n"
-            "• Поиск по рейтингу (7/10–10/10)\n"
-            "• Ловушка — уведомление когда ник освободится",
-            reply_markup=back_to_main_keyboard()
+            "Подписки:\n"
+            "FREE — 10 запросов/день\n"
+            "PRO — 30 запросов/день\n"
+            "MASTER — 150 запросов/день\n\n"
+            "Премиум-функции (доступны с PRO):\n"
+            "Поиск по маске\n"
+            "Поиск по рейтингу\n"
+            "Ловушка для ников",
+            reply_markup=bottom_actions_keyboard()
         )
         await callback.answer()
     except Exception as e:
@@ -611,20 +635,20 @@ async def premium_features(callback):
         user = get_user(callback.from_user.id)
         if user["subscription"] == "free":
             await callback.message.edit_text(
-                "✨ Премиум-функции\n\n"
+                "Премиум-функции\n\n"
                 "Доступны только с подпиской PRO или MASTER!\n\n"
-                "💎 PRO — 30 запросов/день\n"
-                "👑 MASTER — 150 запросов/день\n\n"
+                "PRO — 30 запросов/день\n"
+                "MASTER — 150 запросов/день\n\n"
                 "Купи подписку в разделе «Подписки»",
-                reply_markup=back_to_main_keyboard()
+                reply_markup=bottom_actions_keyboard()
             )
             await callback.answer()
             return
         await callback.message.edit_text(
-            "✨ Премиум-функции\n\n"
-            "🎯 Поиск по маске — найди ники по шаблону (a?b?c → любые буквы)\n"
-            "📊 Поиск по рейтингу — отфильтруй ники по редкости (7/10–10/10)\n"
-            "🔔 Ловушка — получи уведомление, когда ник освободится\n\n"
+            "Премиум-функции\n\n"
+            "Поиск по маске — найди ники по шаблону (a?b?c)\n"
+            "Поиск по рейтингу — отфильтруй ники по редкости\n"
+            "Ловушка — получи уведомление, когда ник освободится\n\n"
             "Выберите функцию:",
             reply_markup=premium_features_keyboard()
         )
@@ -643,15 +667,15 @@ async def premium_mask(callback, state):
             return
         await state.set_state(PremiumStates.waiting_mask)
         await callback.message.edit_text(
-            "🎯 Поиск по маске\n\n"
+            "Поиск по маске\n\n"
             "Введи шаблон ника:\n"
-            "• ? — любая буква\n"
-            "• * — любое количество букв\n\n"
+            "? — любая буква\n"
+            "* — любое количество букв\n\n"
             "Примеры:\n"
-            "a?b?c — найдет 5-буквенные ники (например, a b c)\n"
-            "p*r — найдет ники, начинающиеся на p и заканчивающиеся на r\n\n"
+            "a?b?c — найдет 5-буквенные ники\n"
+            "p*r — найдет ники на p и заканчивающиеся на r\n\n"
             "Отправь шаблон:",
-            reply_markup=back_to_main_keyboard()
+            reply_markup=bottom_actions_keyboard()
         )
         await callback.answer()
     except Exception as e:
@@ -670,10 +694,8 @@ async def process_premium_mask(message, state):
         if not mask or len(mask) > 20:
             await message.answer("Неверный формат. Попробуй снова.")
             return
-        # Преобразуем маску в регулярное выражение
         import re
         pattern = mask.replace('?', '[a-zA-Z]').replace('*', '[a-zA-Z]*')
-        # Генерируем варианты
         found = []
         for _ in range(50):
             nick = ''.join(random.choices(string.ascii_lowercase, k=len(mask.replace('*', '')) + random.randint(0, 3)))
@@ -685,10 +707,11 @@ async def process_premium_mask(message, state):
                         break
         if found:
             await message.answer(
-                f"🎯 Найдено по маске:\n\n" + "\n".join([f"@{n}" for n in found])
+                f"Найдено по маске:\n\n" + "\n".join([f"@{n}" for n in found]),
+                reply_markup=bottom_actions_keyboard()
             )
         else:
-            await message.answer("Не найдено ников по этой маске.")
+            await message.answer("Не найдено ников по этой маске.", reply_markup=bottom_actions_keyboard())
         await state.clear()
     except Exception as e:
         print(f"Process mask error: {e}")
@@ -705,14 +728,14 @@ async def premium_rarity(callback, state):
             return
         await state.set_state(PremiumStates.waiting_rarity)
         await callback.message.edit_text(
-            "📊 Поиск по рейтингу\n\n"
+            "Поиск по рейтингу\n\n"
             "Выбери минимальный рейтинг (от 1 до 10):\n"
-            "• 7/10 — хорошие ники\n"
-            "• 8/10 — редкие ники\n"
-            "• 9/10 — очень редкие\n"
-            "• 10/10 — легендарные\n\n"
+            "7/10 — хорошие ники\n"
+            "8/10 — редкие ники\n"
+            "9/10 — очень редкие\n"
+            "10/10 — легендарные\n\n"
             "Отправь число от 1 до 10:",
-            reply_markup=back_to_main_keyboard()
+            reply_markup=bottom_actions_keyboard()
         )
         await callback.answer()
     except Exception as e:
@@ -745,13 +768,14 @@ async def process_premium_rarity(message, state):
                 rarity = calculate_rarity(nick)
                 rating = rarity * 2
                 if rating >= min_rarity:
-                    found.append(f"@{nick} — {rating}/10 ⭐")
+                    found.append(f"@{nick} — {rating}/10")
         if found:
             await message.answer(
-                f"📊 Найдено ников с рейтингом {min_rarity}/10+:\n\n" + "\n".join(found)
+                f"Найдено ников с рейтингом {min_rarity}/10+:\n\n" + "\n".join(found),
+                reply_markup=bottom_actions_keyboard()
             )
         else:
-            await message.answer("Не найдено ников с таким рейтингом.")
+            await message.answer("Не найдено ников с таким рейтингом.", reply_markup=bottom_actions_keyboard())
         await state.clear()
     except Exception as e:
         print(f"Process rarity error: {e}")
@@ -768,11 +792,11 @@ async def premium_notify(callback, state):
             return
         await state.set_state(PremiumStates.waiting_nick_for_notify)
         await callback.message.edit_text(
-            "🔔 Ловушка для ника\n\n"
+            "Ловушка для ника\n\n"
             "Введи ник, за которым нужно следить:\n"
             "Пример: @myperfectnick\n\n"
             "Как только ник освободится — ты получишь уведомление!",
-            reply_markup=back_to_main_keyboard()
+            reply_markup=bottom_actions_keyboard()
         )
         await callback.answer()
     except Exception as e:
@@ -794,8 +818,9 @@ async def process_premium_notify(message, state):
         user["notify_list"].append(nick)
         update_user(message.from_user.id, user)
         await message.answer(
-            f"🔔 Ловушка для @{nick} активирована!\n\n"
-            f"Ты получишь уведомление, когда ник освободится."
+            f"Ловушка для @{nick} активирована!\n\n"
+            f"Ты получишь уведомление, когда ник освободится.",
+            reply_markup=bottom_actions_keyboard()
         )
         await state.clear()
     except Exception as e:
@@ -817,18 +842,18 @@ async def start_generator(callback, state):
             return
         if user["requests_today"] >= user["requests_limit"]:
             await callback.message.edit_text(
-                "❌ Лимит запросов исчерпан!\n\n"
+                "Лимит запросов исчерпан!\n\n"
                 "Купи подписку, чтобы увеличить лимит:\n"
-                "• PRO — 30 запросов/день\n"
-                "• MASTER — 150 запросов/день\n\n"
-                "💎 Нажми «Подписки» в меню",
-                reply_markup=main_menu_keyboard()
+                "PRO — 30 запросов/день\n"
+                "MASTER — 150 запросов/день\n\n"
+                "Нажми «Подписки» в меню",
+                reply_markup=bottom_actions_keyboard()
             )
             await callback.answer()
             return
         await state.set_state(GeneratorStates.choosing_category)
         await callback.message.edit_text(
-            "🎯 Выбери категорию:",
+            "Выбери категорию:",
             reply_markup=generator_category_keyboard()
         )
         await callback.answer()
@@ -850,7 +875,7 @@ async def choose_category(callback, state):
         await state.update_data(category=category)
         await state.set_state(GeneratorStates.choosing_count)
         await callback.message.edit_text(
-            "📦 Выбери количество:",
+            "Выбери количество:",
             reply_markup=generator_count_keyboard()
         )
         await callback.answer()
@@ -872,7 +897,7 @@ async def choose_count(callback, state):
         await state.update_data(count=count)
         await state.set_state(GeneratorStates.choosing_length)
         await callback.message.edit_text(
-            "📏 Выбери длину:",
+            "Выбери длину:",
             reply_markup=generator_length_keyboard()
         )
         await callback.answer()
@@ -894,7 +919,7 @@ async def choose_length(callback, state):
         await state.update_data(length=length)
         await state.set_state(GeneratorStates.choosing_type)
         await callback.message.edit_text(
-            "🔤 Выбери тип символов:",
+            "Выбери тип символов:",
             reply_markup=generator_type_keyboard()
         )
         await callback.answer()
@@ -922,15 +947,15 @@ async def choose_type(callback, state):
         user = check_and_reset_requests(user_id)
         if user["requests_today"] >= user["requests_limit"]:
             await callback.message.edit_text(
-                "❌ Лимит запросов исчерпан!",
-                reply_markup=main_menu_keyboard()
+                "Лимит запросов исчерпан!",
+                reply_markup=bottom_actions_keyboard()
             )
             await callback.answer()
             return
         if count > 10:
             count = 10
         await callback.message.edit_text(
-            "⏳ Идёт поиск свободных ников...",
+            "Идёт поиск свободных ников...",
             reply_markup=None
         )
         found_nicks = []
@@ -977,11 +1002,11 @@ async def choose_type(callback, state):
         update_user(user_id, user)
         if not found_nicks:
             await callback.message.edit_text(
-                "😔 Не найдено свободных ников.\n\n"
+                "Не найдено свободных ников.\n\n"
                 "Попробуй изменить параметры:\n"
-                "• Увеличь длину\n"
-                "• Выбери другой тип символов\n"
-                "• Выбери другую категорию",
+                "Увеличь длину\n"
+                "Выбери другой тип символов\n"
+                "Выбери другую категорию",
                 reply_markup=generated_nicks_keyboard()
             )
             await state.clear()
@@ -991,13 +1016,13 @@ async def choose_type(callback, state):
         if category and category in NICK_CATEGORIES:
             cat_name = f" ({NICK_CATEGORIES[category]['emoji']} {NICK_CATEGORIES[category]['name']})"
         result_text = "━━━━━━━━━━━━━━━━━━━━━\n"
-        result_text += f"✨ Найдены свободные ники{cat_name}!\n"
+        result_text += f"Найдены свободные ники{cat_name}!\n"
         result_text += "━━━━━━━━━━━━━━━━━━━━━\n\n"
         for i, item in enumerate(found_nicks, 1):
             stars = "⭐" * item["rarity"] + "☆" * (5 - item["rarity"])
             result_text += f"{i}. @{item['nick']} {stars} {item['emoji']} {item['value']}\n"
         result_text += "\n━━━━━━━━━━━━━━━━━━━━━\n"
-        result_text += f"🔥 Осталось запросов: {user['requests_today']}/{user['requests_limit']}"
+        result_text += f"Осталось запросов: {user['requests_today']}/{user['requests_limit']}"
         await callback.message.edit_text(
             result_text,
             reply_markup=generated_nicks_keyboard(found_nicks)
@@ -1013,7 +1038,7 @@ async def back_to_category(callback, state):
     try:
         await state.set_state(GeneratorStates.choosing_category)
         await callback.message.edit_text(
-            "🎯 Выбери категорию:",
+            "Выбери категорию:",
             reply_markup=generator_category_keyboard()
         )
         await callback.answer()
@@ -1027,7 +1052,7 @@ async def back_to_count(callback, state):
     try:
         await state.set_state(GeneratorStates.choosing_count)
         await callback.message.edit_text(
-            "📦 Выбери количество:",
+            "Выбери количество:",
             reply_markup=generator_count_keyboard()
         )
         await callback.answer()
@@ -1041,7 +1066,7 @@ async def back_to_length(callback, state):
     try:
         await state.set_state(GeneratorStates.choosing_length)
         await callback.message.edit_text(
-            "📏 Выбери длину:",
+            "Выбери длину:",
             reply_markup=generator_length_keyboard()
         )
         await callback.answer()
@@ -1070,9 +1095,9 @@ async def save_nicks(callback, state):
         update_user(callback.from_user.id, user)
         await callback.answer(f"Сохранено {len(found_nicks)} ников!")
         await callback.message.edit_text(
-            f"✅ Ники сохранены!\n\n"
-            f"📂 Всего сохранено: {len(saved)} ников",
-            reply_markup=back_to_main_keyboard()
+            f"Ники сохранены!\n\n"
+            f"Всего сохранено: {len(saved)} ников",
+            reply_markup=bottom_actions_keyboard()
         )
         await state.clear()
     except Exception as e:
@@ -1087,19 +1112,19 @@ async def my_nicks(callback):
         saved_nicks = user.get("saved_nicks", [])
         if not saved_nicks:
             await callback.message.edit_text(
-                "📭 У тебя пока нет сохранённых ников",
-                reply_markup=back_to_main_keyboard()
+                "У тебя пока нет сохранённых ников",
+                reply_markup=bottom_actions_keyboard()
             )
             await callback.answer()
             return
         nicks_text = "━━━━━━━━━━━━━━━━━━━━━\n"
-        nicks_text += "📂 Твои сохранённые ники\n"
+        nicks_text += "Твои сохранённые ники\n"
         nicks_text += "━━━━━━━━━━━━━━━━━━━━━\n\n"
         for i, nick in enumerate(saved_nicks, 1):
             rarity = calculate_rarity(nick)
             stars = "⭐" * rarity + "☆" * (5 - rarity)
             nicks_text += f"{i}. @{nick} {stars}\n"
-        nicks_text += f"\n📊 Всего: {len(saved_nicks)} ников"
+        nicks_text += f"\nВсего: {len(saved_nicks)} ников"
         await callback.message.edit_text(
             nicks_text,
             reply_markup=my_nicks_keyboard()
@@ -1117,8 +1142,8 @@ async def clear_nicks(callback):
         user["saved_nicks"] = []
         update_user(callback.from_user.id, user)
         await callback.message.edit_text(
-            "🗑 Все сохранённые ники удалены",
-            reply_markup=back_to_main_keyboard()
+            "Все сохранённые ники удалены",
+            reply_markup=bottom_actions_keyboard()
         )
         await callback.answer()
     except Exception as e:
@@ -1137,25 +1162,25 @@ async def top_nicks(callback):
                 all_nicks.append({"nick": nick, "rarity": rarity})
         if not all_nicks:
             await callback.message.edit_text(
-                "🏆 Топ редких ников\n\n"
-                "😔 Пока никто не сохранил ни одного ника...\n"
-                "💡 Будь первым!",
-                reply_markup=back_to_main_keyboard()
+                "Топ редких ников\n\n"
+                "Пока никто не сохранил ни одного ника...\n"
+                "Будь первым!",
+                reply_markup=bottom_actions_keyboard()
             )
             await callback.answer()
             return
         all_nicks.sort(key=lambda x: x["rarity"], reverse=True)
         top_nicks = all_nicks[:10]
         top_text = "━━━━━━━━━━━━━━━━━━━━━\n"
-        top_text += "🏆 Топ редких ников\n"
+        top_text += "Топ редких ников\n"
         top_text += "━━━━━━━━━━━━━━━━━━━━━\n\n"
         for i, item in enumerate(top_nicks, 1):
             stars = "⭐" * item["rarity"] + "☆" * (5 - item["rarity"])
             top_text += f"{i}. @{item['nick']} {stars}\n"
-        top_text += f"\n📊 Всего в базе: {len(all_nicks)} ников"
+        top_text += f"\nВсего в базе: {len(all_nicks)} ников"
         await callback.message.edit_text(
             top_text,
-            reply_markup=back_to_main_keyboard()
+            reply_markup=bottom_actions_keyboard()
         )
         await callback.answer()
     except Exception as e:
@@ -1180,23 +1205,23 @@ async def show_profile(callback):
                 pass
         profile_text = (
             f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"👤 Твой профиль\n"
+            f"Твой профиль\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📛 Имя: {user['first_name']}\n"
-            f"🆔 UID: <code>{user_id}</code>\n"
-            f"⭐ Баланс: {user['stars']} звёзд\n"
-            f"🏆 Репутация: {user['reputation']}\n"
-            f"📦 Подписка: {sub_text}\n"
-            f"📊 Запросов сегодня: {user['requests_today']}/{user['requests_limit']}\n"
-            f"👥 Рефералов: {len(user['referrals'])}\n"
-            f"📂 Сохранено ников: {len(user.get('saved_nicks', []))}\n"
-            f"✨ Макс. редкость: {user.get('max_rarity_found', 0)}⭐\n"
-            f"📅 В системе: {user['created_at']}\n"
+            f"Имя: {user['first_name']}\n"
+            f"UID: <code>{user_id}</code>\n"
+            f"Баланс: {user['stars']} звёзд\n"
+            f"Репутация: {user['reputation']}\n"
+            f"Подписка: {sub_text}\n"
+            f"Запросов сегодня: {user['requests_today']}/{user['requests_limit']}\n"
+            f"Рефералов: {len(user['referrals'])}\n"
+            f"Сохранено ников: {len(user.get('saved_nicks', []))}\n"
+            f"Макс. редкость: {user.get('max_rarity_found', 0)}\n"
+            f"В системе: {user['created_at']}\n"
             f"━━━━━━━━━━━━━━━━━━━━━"
         )
         await callback.message.edit_text(
             profile_text,
-            reply_markup=main_menu_keyboard()
+            reply_markup=bottom_actions_keyboard()
         )
         await callback.answer()
     except Exception as e:
@@ -1218,23 +1243,23 @@ async def show_subscriptions(callback):
                 pass
         await callback.message.edit_text(
             f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"💎 Доступные подписки\n"
+            f"Доступные подписки\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"🆓 FREE — 10 запросов/день (бесплатно)\n\n"
-            f"⭐ PRO — 30 запросов/день\n"
-            f"  ▫️ 1 месяц — 15 ⭐\n"
-            f"  ▫️ 3 месяца — 25 ⭐\n"
-            f"  ▫️ 1 год — 75 ⭐\n\n"
-            f"👑 MASTER — 150 запросов/день\n"
-            f"  ▫️ 1 месяц — 50 ⭐\n"
-            f"  ▫️ 3 месяца — 75 ⭐\n"
-            f"  ▫️ 1 год — 130 ⭐\n"
-            f"  ▫️ НАВСЕГДА — 350 ⭐\n\n"
-            f"✨ Премиум-функции PRO:\n"
-            f"• Поиск по маске\n"
-            f"• Поиск по рейтингу\n"
-            f"• Ловушка для ников\n\n"
-            f"📌 Твоя подписка: {sub_text}",
+            f"FREE — 10 запросов/день (бесплатно)\n\n"
+            f"PRO — 30 запросов/день\n"
+            f"  1 месяц — 15 \n"
+            f"  3 месяца — 25 \n"
+            f"  1 год — 75 \n\n"
+            f"MASTER — 150 запросов/день\n"
+            f"  1 месяц — 50 \n"
+            f"  3 месяца — 75 \n"
+            f"  1 год — 130 \n"
+            f"  НАВСЕГДА — 350 \n\n"
+            f"Премиум-функции PRO:\n"
+            f"Поиск по маске\n"
+            f"Поиск по рейтингу\n"
+            f"Ловушка для ников\n\n"
+            f"Твоя подписка: {sub_text}",
             reply_markup=subscriptions_keyboard()
         )
         await callback.answer()
@@ -1255,7 +1280,7 @@ async def buy_subscription(callback):
             return
         cost = SUB_PRICES[sub_type][period]
         if user["stars"] < cost:
-            await callback.answer(f"Не хватает звёзд! Нужно {cost} ⭐, у тебя {user['stars']} ⭐")
+            await callback.answer(f"Не хватает звёзд! Нужно {cost} , у тебя {user['stars']} ")
             return
         user["stars"] -= cost
         period_days = {"month": 30, "3month": 90, "year": 365, "forever": 9999}
@@ -1272,12 +1297,12 @@ async def buy_subscription(callback):
             user["requests_limit"] = 150
         update_user(callback.from_user.id, user)
         await callback.message.edit_text(
-            f"✅ Подписка {sub_type.upper()} активирована!\n\n"
-            f"📅 Период: {period}\n"
-            f"⭐ Снято: {cost} звёзд\n"
-            f"💰 Остаток: {user['stars']} ⭐\n\n"
-            f"📊 Лимит запросов: {user['requests_limit']}/день\n"
-            f"✨ Премиум-функции разблокированы!",
+            f"Подписка {sub_type.upper()} активирована!\n\n"
+            f"Период: {period}\n"
+            f"Снято: {cost} звёзд\n"
+            f"Остаток: {user['stars']} \n\n"
+            f"Лимит запросов: {user['requests_limit']}/день\n"
+            f"Премиум-функции разблокированы!",
             reply_markup=subscriptions_keyboard()
         )
         await callback.answer()
@@ -1291,12 +1316,12 @@ async def show_donate(callback):
     try:
         await callback.message.edit_text(
             f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"⭐ Пополнить звёзды\n"
+            f"Пополнить звёзды\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"Выбери сумму для пополнения:\n"
-            f"💰 Оплата через Telegram Stars\n\n"
-            f"💡 Курс: 1 ⭐ ≈ 1 ₽\n"
-            f"⚡ Звёзды зачисляются мгновенно",
+            f"Оплата через Telegram Stars\n\n"
+            f"Курс: 1  ≈ 1 ₽\n"
+            f"Звёзды зачисляются мгновенно",
             reply_markup=donate_keyboard()
         )
         await callback.answer()
@@ -1314,7 +1339,7 @@ async def process_donate(callback):
             return
         await bot.send_invoice(
             chat_id=callback.from_user.id,
-            title=f"Пополнение на {amount}⭐",
+            title=f"Пополнение на {amount}",
             description=f"Пополнение баланса StarHandle на {amount} звёзд",
             payload=f"balance_{amount}_{callback.from_user.id}",
             provider_token="",
@@ -1352,11 +1377,11 @@ async def process_successful_payment(message):
         user["stars"] += amount
         update_user(user_id, user)
         await message.answer(
-            f"✅ Пополнение успешно!\n\n"
-            f"⭐ Зачислено: {amount} звёзд\n"
-            f"💰 Твой баланс: {user['stars']} ⭐\n\n"
-            f"💎 Теперь ты можешь купить подписку в разделе «Подписки»",
-            reply_markup=main_menu_keyboard()
+            f"Пополнение успешно!\n\n"
+            f"Зачислено: {amount} звёзд\n"
+            f"Твой баланс: {user['stars']} \n\n"
+            f"Теперь ты можешь купить подписку в разделе «Подписки»",
+            reply_markup=bottom_actions_keyboard()
         )
     except Exception as e:
         print(f"Successful payment error: {e}")
@@ -1371,15 +1396,15 @@ async def show_referrals(callback):
         link = get_referral_link(user_id)
         await callback.message.edit_text(
             f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"👥 Реферальная система\n"
+            f"Реферальная система\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"💰 Приглашай друзей и получай бонусы!\n\n"
-            f"🔗 Твоя ссылка:\n"
+            f"Приглашай друзей и получай бонусы!\n\n"
+            f"Твоя ссылка:\n"
             f"<code>{link}</code>\n\n"
-            f"📊 Твоя статистика:\n"
-            f"• Приглашено: {len(user['referrals'])} чел.\n"
-            f"• Бонус: +3 запроса за каждого реферала\n\n"
-            f"🔥 Чем больше друзей — тем больше возможностей!",
+            f"Твоя статистика:\n"
+            f"Приглашено: {len(user['referrals'])} чел.\n"
+            f"Бонус: +3 запроса за каждого реферала\n\n"
+            f"Чем больше друзей — тем больше возможностей!",
             reply_markup=referral_keyboard(user_id)
         )
         await callback.answer()
@@ -1404,14 +1429,14 @@ async def show_support(callback):
     try:
         await callback.message.edit_text(
             f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"📞 Техническая поддержка\n"
+            f"Техническая поддержка\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"❓ Возникли вопросы или проблемы?\n\n"
-            f"📩 Наши контакты:\n"
-            f"• {SUPPORT_CONTACTS[0]}\n"
-            f"• {SUPPORT_CONTACTS[1]}\n\n"
-            f"⏰ Время ответа: обычно 5-15 минут\n"
-            f"💬 Пишите чётко и подробно",
+            f"Возникли вопросы или проблемы?\n\n"
+            f"Наши контакты:\n"
+            f"{SUPPORT_CONTACTS[0]}\n"
+            f"{SUPPORT_CONTACTS[1]}\n\n"
+            f"Время ответа: обычно 5-15 минут\n"
+            f"Пишите чётко и подробно",
             reply_markup=support_keyboard()
         )
         await callback.answer()
@@ -1428,7 +1453,7 @@ async def admin_login(message):
                 await message.answer("Доступ запрещён!")
                 return
             await message.answer(
-                "🔐 Добро пожаловать в админ-панель!",
+                "Добро пожаловать в админ-панель!",
                 reply_markup=admin_keyboard()
             )
         else:
@@ -1447,7 +1472,7 @@ async def admin_actions(callback, state):
         if action == "broadcast":
             await state.set_state(AdminStates.waiting_for_message)
             await callback.message.edit_text(
-                "📢 Рассылка\n\n"
+                "Рассылка\n\n"
                 "Отправь сообщение для рассылки всем пользователям.\n"
                 "Для отмены напиши /cancel"
             )
@@ -1455,7 +1480,7 @@ async def admin_actions(callback, state):
             await state.set_state(AdminStates.waiting_for_user_id)
             await state.update_data(admin_action="sub")
             await callback.message.edit_text(
-                "🎁 Выдача подписки\n\n"
+                "Выдача подписки\n\n"
                 "Введи ID пользователя и тип подписки через пробел:\n"
                 "<code>123456789 pro month</code>\n"
                 "или <code>123456789 master forever</code>\n\n"
@@ -1466,7 +1491,7 @@ async def admin_actions(callback, state):
             await state.set_state(AdminStates.waiting_for_user_id)
             await state.update_data(admin_action="ban")
             await callback.message.edit_text(
-                "🚫 Бан пользователя\n\n"
+                "Бан пользователя\n\n"
                 "Введи ID пользователя для бана/разбана:\n"
                 "<code>123456789</code>"
             )
@@ -1474,7 +1499,7 @@ async def admin_actions(callback, state):
             await state.set_state(AdminStates.waiting_for_user_id)
             await state.update_data(admin_action="requests")
             await callback.message.edit_text(
-                "📊 Выдача запросов\n\n"
+                "Выдача запросов\n\n"
                 "Введи ID пользователя и количество запросов через пробел:\n"
                 "<code>123456789 50</code>"
             )
@@ -1482,7 +1507,7 @@ async def admin_actions(callback, state):
             await state.set_state(AdminStates.waiting_for_user_id)
             await state.update_data(admin_action="stars")
             await callback.message.edit_text(
-                "⭐ Выдача звёзд\n\n"
+                "Выдача звёзд\n\n"
                 "Введи ID пользователя и количество звёзд через пробел:\n"
                 "<code>123456789 100</code>"
             )
@@ -1490,7 +1515,7 @@ async def admin_actions(callback, state):
             await state.set_state(AdminStates.waiting_for_user_id)
             await state.update_data(admin_action="online_requests")
             await callback.message.edit_text(
-                "🟢 Выдача запросов ВСЕМ ОНЛАЙН\n\n"
+                "Выдача запросов ВСЕМ ОНЛАЙН\n\n"
                 "Введи количество запросов для всех активных сегодня пользователей:\n"
                 "<code>10</code>"
             )
@@ -1514,14 +1539,14 @@ async def admin_actions(callback, state):
                 total_saved_nicks += len(u.get("saved_nicks", []))
             await callback.message.edit_text(
                 f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"📊 СТАТИСТИКА БОТА\n"
+                f"СТАТИСТИКА БОТА\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"👥 Всего пользователей: {total_users}\n"
-                f"⭐ Всего звёзд: {total_stars}\n"
-                f"💎 PRO подписок: {pro_users}\n"
-                f"👑 MASTER подписок: {master_users}\n"
-                f"📂 Сохранено ников: {total_saved_nicks}\n"
-                f"🚫 Забанено: {banned_users}\n"
+                f"Всего пользователей: {total_users}\n"
+                f"Всего звёзд: {total_stars}\n"
+                f"PRO подписок: {pro_users}\n"
+                f"MASTER подписок: {master_users}\n"
+                f"Сохранено ников: {total_saved_nicks}\n"
+                f"Забанено: {banned_users}\n"
                 f"━━━━━━━━━━━━━━━━━━━━━",
                 reply_markup=admin_keyboard()
             )
@@ -1531,8 +1556,8 @@ async def admin_actions(callback, state):
             total = len(users)
             if total == 0:
                 await callback.message.edit_text(
-                    "📊 Статистика пользователей\n\n"
-                    "😔 Пока нет пользователей",
+                    "Статистика пользователей\n\n"
+                    "Пока нет пользователей",
                     reply_markup=admin_keyboard()
                 )
                 await callback.answer()
@@ -1576,19 +1601,19 @@ async def admin_actions(callback, state):
                 total_referrals += len(u.get("referrals", []))
             await callback.message.edit_text(
                 f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"📊 СТАТИСТИКА ПОЛЬЗОВАТЕЛЕЙ\n"
+                f"СТАТИСТИКА ПОЛЬЗОВАТЕЛЕЙ\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"👥 Всего пользователей: {total}\n"
-                f"🟢 Активны сегодня: {active_today}\n"
-                f"🟡 Новых за неделю: {active_week}\n\n"
-                f"💎 Подписки:\n"
-                f"  • FREE: {free_users}\n"
-                f"  • PRO: {pro_users}\n"
-                f"  • MASTER: {master_users}\n\n"
-                f"⭐ Всего звёзд: {total_stars}\n"
-                f"📂 Сохранено ников: {total_saved_nicks}\n"
-                f"👥 Всего рефералов: {total_referrals}\n"
-                f"🚫 Забанено: {banned_users}\n"
+                f"Всего пользователей: {total}\n"
+                f"Активны сегодня: {active_today}\n"
+                f"Новых за неделю: {active_week}\n\n"
+                f"Подписки:\n"
+                f"  FREE: {free_users}\n"
+                f"  PRO: {pro_users}\n"
+                f"  MASTER: {master_users}\n\n"
+                f"Всего звёзд: {total_stars}\n"
+                f"Сохранено ников: {total_saved_nicks}\n"
+                f"Всего рефералов: {total_referrals}\n"
+                f"Забанено: {banned_users}\n"
                 f"━━━━━━━━━━━━━━━━━━━━━",
                 reply_markup=admin_keyboard()
             )
@@ -1607,12 +1632,12 @@ async def admin_broadcast(message, state):
         sent = 0
         for uid in db["users"].keys():
             try:
-                await bot.send_message(int(uid), f"📢 Объявление от администрации\n\n{message.text}")
+                await bot.send_message(int(uid), f"Объявление от администрации\n\n{message.text}")
                 sent += 1
                 await asyncio.sleep(0.05)
             except:
                 pass
-        await message.answer(f"✅ Рассылка завершена! Отправлено {sent} пользователям.")
+        await message.answer(f"Рассылка завершена! Отправлено {sent} пользователям.")
         await state.clear()
     except Exception as e:
         print(f"Admin broadcast error: {e}")
@@ -1644,7 +1669,7 @@ async def admin_action_input(message, state):
             if not online_users:
                 await message.answer("Нет активных пользователей сегодня!")
                 await state.clear()
-                await message.answer("🔐 Админ-панель:", reply_markup=admin_keyboard())
+                await message.answer("Админ-панель:", reply_markup=admin_keyboard())
                 return
             count = 0
             for uid in online_users:
@@ -1653,13 +1678,13 @@ async def admin_action_input(message, state):
                 update_user(uid, user)
                 count += 1
                 try:
-                    await bot.send_message(uid, f"🎁 Администратор выдал бонус!\n\n📊 +{amount} запросов")
+                    await bot.send_message(uid, f"Администратор выдал бонус!\n\n+{amount} запросов")
                     await asyncio.sleep(0.05)
                 except:
                     pass
-            await message.answer(f"✅ Выдано {amount} запросов {count} активным пользователям!")
+            await message.answer(f"Выдано {amount} запросов {count} активным пользователям!")
             await state.clear()
-            await message.answer("🔐 Админ-панель:", reply_markup=admin_keyboard())
+            await message.answer("Админ-панель:", reply_markup=admin_keyboard())
         elif action == "sub" and len(parts) >= 3:
             try:
                 user_id = int(parts[0])
@@ -1685,9 +1710,9 @@ async def admin_action_input(message, state):
             elif sub_type == "master":
                 user["requests_limit"] = 150
             update_user(user_id, user)
-            await message.answer(f"✅ Подписка {sub_type.upper()} ({period}) выдана пользователю {user_id}")
+            await message.answer(f"Подписка {sub_type.upper()} ({period}) выдана пользователю {user_id}")
             try:
-                await bot.send_message(user_id, f"🎁 Вам выдана подписка {sub_type.upper()}!\n\n📅 Период: {period}\n📊 Лимит: {user['requests_limit']}/день")
+                await bot.send_message(user_id, f"Вам выдана подписка {sub_type.upper()}!\n\nПериод: {period}\nЛимит: {user['requests_limit']}/день")
             except:
                 pass
         elif action == "ban" and len(parts) >= 1:
@@ -1700,9 +1725,9 @@ async def admin_action_input(message, state):
             user["banned"] = not user.get("banned", False)
             update_user(user_id, user)
             status = "забанен" if user["banned"] else "разбанен"
-            await message.answer(f"✅ Пользователь {user_id} {status}")
+            await message.answer(f"Пользователь {user_id} {status}")
             try:
-                await bot.send_message(user_id, f"🚫 Вы были {status} администратором")
+                await bot.send_message(user_id, f"Вы были {status} администратором")
             except:
                 pass
         elif action == "requests" and len(parts) >= 2:
@@ -1718,7 +1743,7 @@ async def admin_action_input(message, state):
             user = get_user(user_id)
             user["requests_today"] += amount
             update_user(user_id, user)
-            await message.answer(f"✅ Пользователю {user_id} выдано {amount} запросов")
+            await message.answer(f"Пользователю {user_id} выдано {amount} запросов")
         elif action == "stars" and len(parts) >= 2:
             try:
                 user_id = int(parts[0])
@@ -1732,12 +1757,12 @@ async def admin_action_input(message, state):
             user = get_user(user_id)
             user["stars"] += amount
             update_user(user_id, user)
-            await message.answer(f"✅ Пользователю {user_id} выдано {amount} звёзд")
+            await message.answer(f"Пользователю {user_id} выдано {amount} звёзд")
         else:
             await message.answer("Неверный формат!")
             return
         await state.clear()
-        await message.answer("🔐 Админ-панель:", reply_markup=admin_keyboard())
+        await message.answer("Админ-панель:", reply_markup=admin_keyboard())
     except Exception as e:
         print(f"Admin action input error: {e}")
         await message.answer("Ошибка")
@@ -1745,7 +1770,7 @@ async def admin_action_input(message, state):
 @dp.message(Command("cancel"))
 async def cancel_command(message, state):
     await state.clear()
-    await message.answer("❌ Действие отменено", reply_markup=main_menu_keyboard())
+    await message.answer("Действие отменено", reply_markup=main_menu_keyboard())
 
 @dp.message(Command("stats"))
 async def stats_command(message):
@@ -1761,10 +1786,10 @@ async def stats_command(message):
             if u.get("requests_today", 0) > 0:
                 active_today += 1
         await message.answer(
-            f"📊 Статистика бота\n\n"
-            f"👥 Всего пользователей: {total}\n"
-            f"🟢 Активны сегодня: {active_today}\n\n"
-            f"💡 Подробная статистика — только для админов"
+            f"Статистика бота\n\n"
+            f"Всего пользователей: {total}\n"
+            f"Активны сегодня: {active_today}\n\n"
+            f"Подробная статистика — только для админов"
         )
     except Exception as e:
         print(f"Stats command error: {e}")
@@ -1834,7 +1859,7 @@ async def web_app_handler(message: Message):
             period = data.get("period", "month")
             price = data.get("price", 15)
             if user["stars"] < price:
-                await message.answer(json.dumps({"error": f"Не хватает звёзд! Нужно {price}⭐"}))
+                await message.answer(json.dumps({"error": f"Не хватает звёзд! Нужно {price}"}))
                 return
             user["stars"] -= price
             period_days = {"month": 30, "year": 365, "forever": 9999}
@@ -1855,7 +1880,7 @@ async def web_app_handler(message: Message):
             amount = data.get("amount", 10)
             await bot.send_invoice(
                 chat_id=user_id,
-                title=f"Пополнение на {amount}⭐",
+                title=f"Пополнение на {amount}",
                 description=f"Пополнение баланса StarHandle на {amount} звёзд",
                 payload=f"donate_{amount}_{user_id}",
                 provider_token="",
@@ -1871,7 +1896,7 @@ async def web_app_handler(message: Message):
             amount = data.get("amount", 10)
             price = data.get("price", 5)
             if user["stars"] < price:
-                await message.answer(json.dumps({"error": f"Не хватает звёзд! Нужно {price}⭐"}))
+                await message.answer(json.dumps({"error": f"Не хватает звёзд! Нужно {price}"}))
                 return
             user["stars"] -= price
             user["requests_today"] -= amount
