@@ -1,0 +1,40 @@
+{
+  "users": {
+    "8024241408": {
+      "id": 8024241408,
+      "username": "CEPNAYA_KISLOTA",
+      "first_name": "Серная кислота",
+      "stars": 0,
+      "reputation": 0,
+      "subscription": "free",
+      "sub_expires": "",
+      "requests_today": 19,
+      "requests_limit": 10,
+      "last_reset": "2026-07-07",
+      "referral_code": "KXYTXX41",
+      "referred_by": "",
+      "referrals": [],
+      "banned": false,
+      "created_at": "2026-07-07 21:16:38"
+    },
+    "8456131533": {
+      "id": 8456131533,
+      "username": "",
+      "first_name": "",
+      "stars": 0,
+      "reputation": 0,
+      "subscription": "free",
+      "sub_expires": "",
+      "requests_today": 10,
+      "requests_limit": 10,
+      "last_reset": "2026-07-07",
+      "referral_code": "",
+      "referred_by": "",
+      "referrals": [],
+      "saved_nicks": [],
+      "banned": false,
+      "created_at": "2026-07-07 23:39:22"
+    }
+  },
+  "total_stars": 0
+}
