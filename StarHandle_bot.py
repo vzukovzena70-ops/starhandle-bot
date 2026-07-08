@@ -139,6 +139,8 @@ NICK_RARITY = {
 
 user_last_action = defaultdict(float)
 
+EMOJIS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨"]
+
 def check_flood(user_id, cooldown=2):
     now = time.time()
     if now - user_last_action[user_id] < cooldown:
@@ -186,7 +188,9 @@ def get_user(user_id):
             "total_attempts": 0,
             "max_rarity_found": 0,
             "notify_list": [],
-            "agreement_accepted": False
+            "agreement_accepted": False,
+            "captcha_passed": False,
+            "captcha_attempts": 0
         }
         save_db(db)
     return db["users"][uid]
@@ -328,6 +332,18 @@ def require_subscription(func):
         return await func(callback, *args, **kwargs)
     return wrapper
 
+def require_captcha(func):
+    @wraps(func)
+    async def wrapper(callback, *args, **kwargs):
+        user_id = callback.from_user.id
+        user = get_user(user_id)
+        if not user.get("captcha_passed"):
+            await callback.answer("Сначала пройдите проверку на робота!")
+            await start_captcha(callback.message, user_id)
+            return
+        return await func(callback, *args, **kwargs)
+    return wrapper
+
 async def check_username_telegram(username):
     username = username.lower().strip()
     if len(username) < 5 or len(username) > 32:
@@ -386,12 +402,22 @@ class PremiumStates(StatesGroup):
     waiting_rarity = State()
     waiting_nick_for_notify = State()
 
+class CaptchaStates(StatesGroup):
+    waiting_captcha = State()
+
 def agreement_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Принимаю условия", callback_data="accept_agreement")],
         [InlineKeyboardButton(text="Пользовательское соглашение", callback_data="show_agreement")],
         [InlineKeyboardButton(text="Политика конфиденциальности", callback_data="show_privacy")],
     ])
+
+def captcha_keyboard(emojis, target_emoji):
+    random.shuffle(emojis)
+    buttons = []
+    for emoji in emojis:
+        buttons.append([InlineKeyboardButton(text=emoji, callback_data=f"captcha_{emoji}")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def main_menu_keyboard():
     keyboard = [
@@ -533,6 +559,96 @@ def my_nicks_keyboard():
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
+async def start_captcha(message, user_id):
+    user = get_user(user_id)
+    if user["captcha_attempts"] >= 3:
+        await message.answer(
+            "Вы превысили лимит попыток проверки на робота.\n"
+            "Попробуйте позже или обратитесь в поддержку."
+        )
+        return
+    
+    target_emoji = random.choice(EMOJIS)
+    emojis = random.sample(EMOJIS, 9)
+    if target_emoji not in emojis:
+        emojis[random.randint(0, 8)] = target_emoji
+    
+    user["captcha_target"] = target_emoji
+    user["captcha_emojis"] = emojis
+    update_user(user_id, user)
+    
+    await message.answer(
+        f"Проверка на робота\n\n"
+        f"Найди эмодзи: {target_emoji}\n\n"
+        f"Выбери из 9 вариантов:\n"
+        f"У тебя осталось {3 - user['captcha_attempts']} попыток",
+        reply_markup=captcha_keyboard(emojis, target_emoji)
+    )
+
+@dp.callback_query(lambda c: c.data.startswith("captcha_"))
+async def captcha_handler(callback):
+    user_id = callback.from_user.id
+    user = get_user(user_id)
+    
+    if user.get("captcha_passed"):
+        await callback.answer("Вы уже прошли проверку!")
+        await callback.message.delete()
+        user = get_user(user_id)
+        await callback.message.answer(
+            f"StarHandle — поиск свободных ников\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Пользователь: {user['first_name']}\n"
+            f"Подписка: {user['subscription'].upper()}\n"
+            f"Запросов: {user['requests_today']}/{user['requests_limit']}\n"
+            f"Баланс: {user['stars']} звёзд\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Выберите действие:",
+            reply_markup=main_menu_keyboard()
+        )
+        return
+    
+    selected = callback.data.split("_")[1]
+    target = user.get("captcha_target")
+    attempts = user.get("captcha_attempts", 0)
+    
+    if selected == target:
+        user["captcha_passed"] = True
+        update_user(user_id, user)
+        await callback.message.delete()
+        await callback.message.answer(
+            "✅ Проверка пройдена! Добро пожаловать в StarHandle!",
+            reply_markup=main_menu_keyboard()
+        )
+        await callback.answer("Добро пожаловать!")
+    else:
+        attempts += 1
+        user["captcha_attempts"] = attempts
+        update_user(user_id, user)
+        
+        if attempts >= 3:
+            await callback.message.edit_text(
+                "❌ Вы исчерпали все 3 попытки.\n"
+                "Попробуйте позже или обратитесь в поддержку."
+            )
+            await callback.answer()
+            return
+        
+        new_emojis = random.sample(EMOJIS, 9)
+        if target not in new_emojis:
+            new_emojis[random.randint(0, 8)] = target
+        
+        user["captcha_emojis"] = new_emojis
+        update_user(user_id, user)
+        
+        await callback.message.edit_text(
+            f"❌ Неверно! Попробуйте снова.\n\n"
+            f"Проверка на робота\n\n"
+            f"Найди эмодзи: {target}\n\n"
+            f"У тебя осталось {3 - attempts} попыток",
+            reply_markup=captcha_keyboard(new_emojis, target)
+        )
+        await callback.answer("Неверный выбор!")
+
 @dp.message(Command("start"))
 async def cmd_start(message, state):
     try:
@@ -543,7 +659,7 @@ async def cmd_start(message, state):
         if user.get("banned"):
             await message.answer("Вы забанены.")
             return
-            
+        
         if not user.get("agreement_accepted"):
             await message.answer(
                 "Добро пожаловать в StarHandle!\n\n"
@@ -558,6 +674,10 @@ async def cmd_start(message, state):
             )
             return
             
+        if not user.get("captcha_passed"):
+            await start_captcha(message, user_id)
+            return
+        
         is_subscribed, not_subscribed = await check_channel_subscription(user_id)
         if not is_subscribed:
             await message.answer(
@@ -605,7 +725,7 @@ async def cmd_start(message, state):
 @dp.callback_query(lambda c: c.data == "show_agreement")
 async def show_agreement(callback):
     await callback.message.edit_text(
-        "ПОЛЬЗОВАТЕЛЬСКОЕ СОГЛАШЕНИЕ\n\n"
+        "ПОЛЬЗОВАТЕЛЬСКОЕ СОГЛАШЕНИЕ (от 08.07.2026)\n\n"
         "1. Бот StarHandle предоставляет услуги по поиску свободных юзернеймов в Telegram.\n\n"
         "2. Бот не гарантирует 100% точность проверки занятости ников.\n\n"
         "3. Ответственность за использование найденных ников несёт пользователь.\n\n"
@@ -614,6 +734,7 @@ async def show_agreement(callback):
         "6. Запрещается использовать бота для незаконных целей.\n\n"
         "7. Администрация не несёт ответственности за убытки, возникшие в результате использования бота.\n\n"
         "8. Используя бота, вы соглашаетесь с настоящими условиями.\n\n"
+        "9. Бот предназначен для пользователей старше 13 лет.\n\n"
         "Для продолжения примите условия:",
         reply_markup=agreement_keyboard()
     )
@@ -622,7 +743,7 @@ async def show_agreement(callback):
 @dp.callback_query(lambda c: c.data == "show_privacy")
 async def show_privacy(callback):
     await callback.message.edit_text(
-        "ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ\n\n"
+        "ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ (от 08.07.2026)\n\n"
         "1. Бот собирает следующую информацию:\n"
         "   - ID пользователя Telegram\n"
         "   - Имя и юзернейм\n"
@@ -646,11 +767,15 @@ async def accept_agreement(callback):
     user["agreement_accepted"] = True
     update_user(callback.from_user.id, user)
     await callback.message.delete()
-    await callback.message.answer(
-        "Добро пожаловать!\n\n"
-        "Для доступа к боту подпишитесь на каналы:",
-        reply_markup=get_subscription_keyboard([])
-    )
+    
+    if not user.get("captcha_passed"):
+        await start_captcha(callback.message, callback.from_user.id)
+    else:
+        await callback.message.answer(
+            "Добро пожаловать!\n\n"
+            "Для доступа к боту подпишитесь на каналы:",
+            reply_markup=get_subscription_keyboard([])
+        )
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "check_subscription")
@@ -681,6 +806,7 @@ async def check_subscription_handler(callback):
 
 @dp.callback_query(lambda c: c.data == "main_menu")
 @require_subscription
+@require_captcha
 async def main_menu(callback, state):
     try:
         await state.clear()
@@ -708,6 +834,7 @@ async def main_menu(callback, state):
 
 @dp.callback_query(lambda c: c.data == "help")
 @require_subscription
+@require_captcha
 async def show_help(callback):
     try:
         await callback.message.edit_text(
@@ -733,6 +860,7 @@ async def show_help(callback):
 
 @dp.callback_query(lambda c: c.data == "premium_features")
 @require_subscription
+@require_captcha
 async def premium_features(callback):
     try:
         user = get_user(callback.from_user.id)
@@ -762,6 +890,7 @@ async def premium_features(callback):
 
 @dp.callback_query(lambda c: c.data == "premium_mask")
 @require_subscription
+@require_captcha
 async def premium_mask(callback, state):
     try:
         user = get_user(callback.from_user.id)
@@ -823,6 +952,7 @@ async def process_premium_mask(message, state):
 
 @dp.callback_query(lambda c: c.data == "premium_rarity")
 @require_subscription
+@require_captcha
 async def premium_rarity(callback, state):
     try:
         user = get_user(callback.from_user.id)
@@ -887,6 +1017,7 @@ async def process_premium_rarity(message, state):
 
 @dp.callback_query(lambda c: c.data == "premium_notify")
 @require_subscription
+@require_captcha
 async def premium_notify(callback, state):
     try:
         user = get_user(callback.from_user.id)
@@ -933,6 +1064,7 @@ async def process_premium_notify(message, state):
 
 @dp.callback_query(lambda c: c.data == "generator")
 @require_subscription
+@require_captcha
 async def start_generator(callback, state):
     try:
         if not check_flood(callback.from_user.id):
@@ -966,6 +1098,7 @@ async def start_generator(callback, state):
 
 @dp.callback_query(GeneratorStates.choosing_category, lambda c: c.data.startswith("gen_cat_"))
 @require_subscription
+@require_captcha
 async def choose_category(callback, state):
     try:
         if not check_flood(callback.from_user.id):
@@ -988,6 +1121,7 @@ async def choose_category(callback, state):
 
 @dp.callback_query(GeneratorStates.choosing_count, lambda c: c.data.startswith("gen_count_"))
 @require_subscription
+@require_captcha
 async def choose_count(callback, state):
     try:
         if not check_flood(callback.from_user.id):
@@ -1010,6 +1144,7 @@ async def choose_count(callback, state):
 
 @dp.callback_query(GeneratorStates.choosing_length, lambda c: c.data.startswith("gen_len_"))
 @require_subscription
+@require_captcha
 async def choose_length(callback, state):
     try:
         if not check_flood(callback.from_user.id):
@@ -1032,6 +1167,7 @@ async def choose_length(callback, state):
 
 @dp.callback_query(GeneratorStates.choosing_type, lambda c: c.data.startswith("gen_type_"))
 @require_subscription
+@require_captcha
 async def choose_type(callback, state):
     try:
         if not check_flood(callback.from_user.id):
@@ -1139,6 +1275,7 @@ async def choose_type(callback, state):
 
 @dp.callback_query(lambda c: c.data == "gen_back_category")
 @require_subscription
+@require_captcha
 async def back_to_category(callback, state):
     try:
         await state.set_state(GeneratorStates.choosing_category)
@@ -1153,6 +1290,7 @@ async def back_to_category(callback, state):
 
 @dp.callback_query(lambda c: c.data == "gen_back_count")
 @require_subscription
+@require_captcha
 async def back_to_count(callback, state):
     try:
         await state.set_state(GeneratorStates.choosing_count)
@@ -1167,6 +1305,7 @@ async def back_to_count(callback, state):
 
 @dp.callback_query(lambda c: c.data == "gen_back_length")
 @require_subscription
+@require_captcha
 async def back_to_length(callback, state):
     try:
         await state.set_state(GeneratorStates.choosing_length)
@@ -1181,6 +1320,7 @@ async def back_to_length(callback, state):
 
 @dp.callback_query(lambda c: c.data == "save_nicks")
 @require_subscription
+@require_captcha
 async def save_nicks(callback, state):
     try:
         data = await state.get_data()
@@ -1211,6 +1351,7 @@ async def save_nicks(callback, state):
 
 @dp.callback_query(lambda c: c.data == "check_nicks")
 @require_subscription
+@require_captcha
 async def check_saved_nicks(callback):
     try:
         user = get_user(callback.from_user.id)
@@ -1254,6 +1395,7 @@ async def check_saved_nicks(callback):
 
 @dp.callback_query(lambda c: c.data == "my_nicks")
 @require_subscription
+@require_captcha
 async def my_nicks(callback):
     try:
         user = get_user(callback.from_user.id)
@@ -1284,6 +1426,7 @@ async def my_nicks(callback):
 
 @dp.callback_query(lambda c: c.data == "clear_nicks")
 @require_subscription
+@require_captcha
 async def clear_nicks(callback):
     try:
         user = get_user(callback.from_user.id)
@@ -1300,6 +1443,7 @@ async def clear_nicks(callback):
 
 @dp.callback_query(lambda c: c.data == "top_nicks")
 @require_subscription
+@require_captcha
 async def top_nicks(callback):
     try:
         db = load_db()
@@ -1337,6 +1481,7 @@ async def top_nicks(callback):
 
 @dp.callback_query(lambda c: c.data == "profile")
 @require_subscription
+@require_captcha
 async def show_profile(callback):
     try:
         user_id = callback.from_user.id
@@ -1378,6 +1523,7 @@ async def show_profile(callback):
 
 @dp.callback_query(lambda c: c.data == "subscriptions")
 @require_subscription
+@require_captcha
 async def show_subscriptions(callback):
     try:
         user = get_user(callback.from_user.id)
@@ -1417,6 +1563,7 @@ async def show_subscriptions(callback):
 
 @dp.callback_query(lambda c: c.data.startswith("buy_"))
 @require_subscription
+@require_captcha
 async def buy_subscription(callback):
     try:
         data = callback.data.split("_")
@@ -1460,6 +1607,7 @@ async def buy_subscription(callback):
 
 @dp.callback_query(lambda c: c.data == "donate")
 @require_subscription
+@require_captcha
 async def show_donate(callback):
     try:
         await callback.message.edit_text(
@@ -1479,6 +1627,7 @@ async def show_donate(callback):
 
 @dp.callback_query(lambda c: c.data.startswith("donate_"))
 @require_subscription
+@require_captcha
 async def process_donate(callback):
     try:
         amount = int(callback.data.split("_")[1])
@@ -1537,6 +1686,7 @@ async def process_successful_payment(message):
 
 @dp.callback_query(lambda c: c.data == "referrals")
 @require_subscription
+@require_captcha
 async def show_referrals(callback):
     try:
         user_id = callback.from_user.id
@@ -1562,6 +1712,7 @@ async def show_referrals(callback):
 
 @dp.callback_query(lambda c: c.data.startswith("copy_ref_"))
 @require_subscription
+@require_captcha
 async def copy_referral(callback):
     try:
         user_id = int(callback.data.split("_")[2])
@@ -1573,6 +1724,7 @@ async def copy_referral(callback):
 
 @dp.callback_query(lambda c: c.data == "support")
 @require_subscription
+@require_captcha
 async def show_support(callback):
     try:
         await callback.message.edit_text(
